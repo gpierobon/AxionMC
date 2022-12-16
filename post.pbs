@@ -1,0 +1,25 @@
+#!/bin/bash
+
+#PBS -P xu32
+#PBS -q normal
+
+#PBS -l walltime=6:00:00
+#PBS -l storage=scratch/xu32
+
+#PBS -l mem=100gb
+#PBS -l ncpus=16
+#PBS -l wd
+
+#PBS -M g.pierobon@unsw.edu.au
+#PBS -m e 
+#PBS -N voidL6
+
+module purge
+
+source /home/561/gp5547/python_env/bin/activate
+export OMP_NUM_THREADS=16
+
+mkdir -p aout
+mkdir -p aout/plots aout/render aout/spectrum aout/delta aout/dist aout/void aout/profile aout/vprofile  
+
+python3 postprocessing.py 
