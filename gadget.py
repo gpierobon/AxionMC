@@ -2,6 +2,7 @@ import os,sys
 import errno,glob
 import h5py as h5
 import numpy as np
+from scipy import stats
 
 def check_folder(foldname,snap_base):
     try:
@@ -209,6 +210,8 @@ def dens_profile(x,mass,L,rmin,rad,nbins=50):
     
     r    = np.sqrt(np.sum(x.T**2,axis=0))
     bins = np.geomspace(rmin,rad,nbins)
+    if bins[1]<bins[0]:
+        bins = bins[::-1]
 
     bvol = 4./3 * np.pi * (bins[1:]**3 - bins[:-1]**3)
     hist_mass,hbins = np.histogram(r,bins=bins,weights=mass)
@@ -218,9 +221,9 @@ def dens_profile(x,mass,L,rmin,rad,nbins=50):
     
     return r_out/rad, rho_out
 
-def HMF(massarr):
-    return 
-
+def HMF(massarr,minv,maxv,num):
+    y,x,_ = stats.binned_statistic(massarr,massarr,statistic='count', bins=np.logspace(minv, maxv, num=num))
+    return x,y
 
 #def vol_render(de,res,bmin,bmax,snap_base,j):
 #    data = dict(density = (de, "g/cm**3"))

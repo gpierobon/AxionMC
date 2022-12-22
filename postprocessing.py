@@ -369,8 +369,11 @@ if atype == 8:
         print('Computing profile %d/%d ... '%(i+1,num_halos))
         x,y  = ga.dens_profile(pos-halopos[i:i+1,:],mass,BoxSize,rmin,rad[i]) 
         x = np.array(x); y = np.array(y)
-        np.savetxt('aout/profile/'+str(snap_base)+'/f_'+str(stime)+'_gr_'+str(i)+'.txt',np.column_stack([x, y]))
-
+        if fof_flag:
+            np.savetxt('aout/profile/'+str(snap_base)+'/f_'+str(stime)+'_gr_'+str(i)+'.txt',np.column_stack([x, y]))
+	else:
+            np.savetxt('aout/profile/'+str(snap_base)+'/f_'+str(stime)+'_sub_'+str(i)+'.txt',np.column_stack([x, y]))
+          
 ##########################################################################
 if atype == 9:
     print("Computing density profiles of voids ...")
@@ -396,8 +399,7 @@ if atype == 9:
     void_radius = V.void_radius
 
     snap = str(snap_base)+'/snap_%.3d'%stime
-    head, pp    = ga.load_particles(snap,verbose=True)
-    
+    head, pp    = ga.load_particles(snap,verbose=True) 
     rmin = BoxSize/512
     rad  = 20*void_radius 
     pos  = pp[0]
