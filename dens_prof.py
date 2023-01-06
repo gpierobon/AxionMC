@@ -23,7 +23,7 @@ def fit_nfw(r,rho): # my own fitting routine, seems to give more reliable result
 
     nfw_profile = lambda x, rho0, rs: rho0/( (x/rs) * (1 + x/rs)**2)
     minimization = lambda x: np.sqrt(np.sum(np.abs(np.log10(nfw_profile(r,x[0],x[1])/rho))**2))
-    x0 = [6e-3, 5e-7]
+    x0 = [1e3, 5e-7]
     method = 'Nelder-Mead' #'L-BFGS-B'
     #xbnd = [[1e-5,1], [5e-8,5e-4]]
     #fit = scipy.optimize.minimize(minimization,x0,method=method,bounds=xbnd) #use this for L-BFGS-B method
@@ -34,7 +34,7 @@ def fit_pl(r,rho):
 
     pl_profile = lambda x, rho0, r0, alpha: rho0*(x/r0)**alpha
     minimization = lambda x: np.sqrt(np.sum(np.abs(np.log10(pl_profile(r,x[0],x[1],x[2])/rho))**2))
-    x0 = [1e-1,1e-6,-3]
+    x0 = [1e3,1e-6,-3]
     method = 'Nelder-Mead'
     fit = scipy.optimize.minimize(minimization,x0,method=method)
     return fit.x[0], fit.x[1], fit.x[2]
@@ -43,7 +43,7 @@ def compute_densityprofile(dist_arr, radii, nbin, redshift, h, pmass):
 
     rbins = np.logspace(np.log10(1.0/h),np.log10(radii),nbin)
     r_r, r_bin = np.histogram(dist_arr,bins=rbins)
-    vol = 4.0*np.pi/3.0*(r_bin[1:]**3-r_bin[:-1]**3)*(radii*lunit/((1+redshift)*h))**3 # redshift included, i.e. physical volume
+    vol = 4.0*np.pi/3.0*(r_bin[1:]**3-r_bin[:-1]**3)*(lunit/((1+redshift)*h))**3 # redshift included, i.e. physical volume
     rho_profile = pmass*r_r/vol
     cbins = (r_bin[:-1]+r_bin[1:])/2.0 * lunit/h/(1+redshift) # centered bins in physical units
 
