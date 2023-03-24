@@ -2,7 +2,7 @@ import os,sys
 import errno,glob
 import h5py as h5
 import numpy as np
-from scipy import stats
+from scipy import stats,interpolate
 
 def check_folder(foldname,snap_base):
     try:
@@ -224,6 +224,29 @@ def dens_profile(x,mass,L,rmin,rad,nbins=50):
 def HMF(massarr,minv,maxv,num):
     y,x,_ = stats.binned_statistic(massarr,massarr,statistic='count', bins=np.logspace(minv, maxv, num=num))
     return x,y
+
+
+def inte(f):
+    x = f[:,0]; y = f[:,1]
+    finterp = interpolate.InterpolatedUnivariateSpline(x, y, k=1)
+    xx = np.linspace(x[0], x[-1], 5*len(x))
+    qq = [finterp.integral(0, t) for t in xx]
+    return qq[-1]
+
+def alpha(file):
+    x = file[:,0]; y = file[:,1]*x**2
+    finterp = interpolate.InterpolatedUnivariateSpline(x, y, k=1)
+    xx = np.linspace(x[0], x[-1], 5*len(x))
+    qq = [finterp.integral(0, t) for t in xx]
+    return np.sqrt(qq[-1])
+
+def beta(file):
+    x = file[:,0]; y = file[:,1]/x**2
+    finterp = interpolate.InterpolatedUnivariateSpline(x, y, k=1)
+    xx = np.linspace(x[0], x[-1], 5*len(x))
+    qq = [finterp.integral(0, t) for t in xx]
+    return np.sqrt(qq[-1])
+
 
 #def vol_render(de,res,bmin,bmax,snap_base,j):
 #    data = dict(density = (de, "g/cm**3"))
