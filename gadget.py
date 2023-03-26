@@ -233,15 +233,15 @@ def inte(f):
     qq = [finterp.integral(0, t) for t in xx]
     return qq[-1]
 
-def alpha(file):
-    x = file[:,0]; y = file[:,1]*x**2
+def alpha(f):
+    x = f[:,0]; y = f[:,1]*x**4*4*np.pi
     finterp = interpolate.InterpolatedUnivariateSpline(x, y, k=1)
     xx = np.linspace(x[0], x[-1], 5*len(x))
     qq = [finterp.integral(0, t) for t in xx]
     return np.sqrt(qq[-1])
 
-def beta(file):
-    x = file[:,0]; y = file[:,1]/x**2
+def beta(f):
+    x = f[:,0]; y = f[:,1]/x**2
     finterp = interpolate.InterpolatedUnivariateSpline(x, y, k=1)
     xx = np.linspace(x[0], x[-1], 5*len(x))
     qq = [finterp.integral(0, t) for t in xx]
