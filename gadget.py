@@ -113,7 +113,70 @@ def load_halos(f,fof=True,radius='R200',additional=False,verbose=True):
     
     return head,out 
 
+def iso_ratio(f):
+    """
+    """
+    if '.hdf5' in f:
+        filename = str(f)
+    else:
+        filename = str(f)+'.hdf5'
+            
+    fi = h5.File(filename, 'r')
+    nsubs = np.array(fi['Group/GroupNsubs'])
+    iso = np.array(np.where(nsubs == 1)).size
+    isoratio = iso/nsubs.size
+    return isoratio
 
+def get_isolated():
+    pass
+
+def get_merged():
+    pass
+
+def select_halos(f,Nhalos=100,verbose=True):
+    """
+    Loads halo data for a given fof tab
+    Selects largest subhalos inside groups
+    """
+    if '.hdf5' in f:
+        filename = str(f)
+    else:
+        filename = str(f)+'.hdf5'
+    
+    if verbose:
+            print('Selecting halos from %s'%filename)
+            
+    fi = h5.File(filename, 'r')
+    head = dict(fi['Header'].attrs)
+    z = head['Redshift']
+    a = 1./(1+z)
+    ngroups = head['Ngroups_Total']
+    nsubs = head['Nsubhalos_Total']
+    if verbose:
+        print("Found %d groups and %d subhalos"%(ngroups,nsubs))
+   
+    '''
+    nsubs = # Determine if group has a subhalo
+    3mass = np.array(fi['Group/GroupMass'])
+    sort_ind  = np.where(mass> 1e-12)
+    mass = mass[sort_ind]
+    return mass
+    #pos   = []
+    #vel   = []
+    #mass  = []
+    #rad   = []
+    #size  = []
+    #out   = []
+
+    #fi[]
+    
+    #if fof:
+        #pos  += [np.array(fi['Group/GroupPos'])]
+        #vel  += [np.array(fi['Group/GroupVel'])*np.sqrt(a)]
+    #    mass += [np.array(fi['Group/GroupMass'])]
+    #    rad += [np.array(fi['Group/Group_R_Mean200'])]
+    '''
+    
 def load_particles(f,verbose=True):
     """
     Loads particle data for a given snapshot
