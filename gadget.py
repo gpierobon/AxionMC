@@ -137,7 +137,7 @@ def get_isolated(f):
             
     fi = h5.File(filename, 'r')
     nsubs_arr = np.array(fi['Group/GroupNsubs'])
-    gr_mass_arr = np.array(fi['Subhalo/SubhaloMass'])
+    gr_mass_arr = np.array(fi['Group/GroupMass'])
     iso_ind = np.where(nsubs_arr==1)
     iso_arr = np.array(gr_mass_arr[iso_ind])
     return iso_arr
@@ -152,7 +152,7 @@ def get_merged(f,nsubs_min=10):
             
     fi = h5.File(filename, 'r')
     nsubs_arr = np.array(fi['Group/GroupNsubs'])
-    gr_mass_arr = np.array(fi['Subhalo/SubhaloMass'])
+    gr_mass_arr = np.array(fi['Group/GroupMass'])
     merged_ind = np.where(nsubs_arr>nsubs_min)
     merged_arr = np.array(gr_mass_arr[iso_ind])
     return merged_arr
