@@ -127,11 +127,36 @@ def iso_ratio(f):
     isoratio = iso/nsubs.size
     return isoratio
 
-def get_isolated():
-    pass
+def get_isolated(f):
+    """
+    """
+    if '.hdf5' in f:
+        filename = str(f)
+    else:
+        filename = str(f)+'.hdf5'
+            
+    fi = h5.File(filename, 'r')
+    nsubs_arr = np.array(fi['Group/GroupNsubs'])
+    gr_mass_arr = np.array(fi['Subhalo/SubhaloMass'])
+    iso_ind = np.where(nsubs_arr==1)
+    iso_arr = np.array(gr_mass_arr[iso_ind])
+    return iso_arr
 
-def get_merged():
-    pass
+def get_merged(f,nsubs_min=10):
+    """
+    """
+    if '.hdf5' in f:
+        filename = str(f)
+    else:
+        filename = str(f)+'.hdf5'
+            
+    fi = h5.File(filename, 'r')
+    nsubs_arr = np.array(fi['Group/GroupNsubs'])
+    gr_mass_arr = np.array(fi['Subhalo/SubhaloMass'])
+    merged_ind = np.where(nsubs_arr>nsubs_min)
+    merged_arr = np.array(gr_mass_arr[iso_ind])
+    return merged_arr
+
 
 def select_halos(f,Nhalos=100,verbose=True):
     """
