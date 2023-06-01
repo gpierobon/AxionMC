@@ -36,7 +36,7 @@ def get_info(f):
     print("Box Size: %.5f pc"%fi['Header'].attrs['BoxSize'])
 
 
-def load_halos(f,fof=True,radius='R200',additional=False,verbose=True):
+def load_halos(f,fof=True,radius='R200',isolated=False,additional=False,verbose=True):
     """
     Loads fof data for a given fof tab
     Used for profiles of MC halos or general properties 
@@ -64,24 +64,33 @@ def load_halos(f,fof=True,radius='R200',additional=False,verbose=True):
     out   = []
     
     if fof:
-        pos  += [np.array(fi['Group/GroupPos'])]
-        vel  += [np.array(fi['Group/GroupVel'])*np.sqrt(a)]
-        mass += [np.array(fi['Group/GroupMass'])]
-        if radius == 'R200':
-            rad += [np.array(fi['Group/Group_R_Crit200'])]
-        elif radius == 'R500':
-            rad += [np.array(fi['Group/Group_R_Crit500'])]
-        elif radius == 'RMean':
-            rad += [np.array(fi['Group/Group_R_Mean200'])]
-        elif radius == 'TopHat':
-            rad += [np.array(fi['Group/Group_R_TopHat200'])]
+        if isolated == True:
+            nsubs = np.array(fi['Group/GroupNsubs'])
+            iso_ind = np.where(nsubs==1)
+            pos += [np.array(fi['Group/GroupPos'])[iso_ind]] 
+            vel += [np.array(fi['Group/GroupVel'])[iso_ind]] 
+            pos += [np.array(fi['Group/GroupMass'])[iso_ind]] 
+            rad += [np.array(fi['Group/Group_R_Crit200'])[iso_ind]] 
+            size += [np.array(fi['Group/GroupLen'])[iso_ind]] 
+        
         else:
-            raise ValueError('Selected radius is unknown')
+            pos  += [np.array(fi['Group/GroupPos'])]
+            vel  += [np.array(fi['Group/GroupVel'])*np.sqrt(a)]
+            mass += [np.array(fi['Group/GroupMass'])]
+            if radius == 'R200':
+                rad += [np.array(fi['Group/Group_R_Crit200'])]
+            elif radius == 'R500':
+                rad += [np.array(fi['Group/Group_R_Crit500'])]
+            elif radius == 'RMean':
+                rad += [np.array(fi['Group/Group_R_Mean200'])]
+            elif radius == 'TopHat':
+                rad += [np.array(fi['Group/Group_R_TopHat200'])]
+            else:
+                raise ValueError('Selected radius is unknown')
 
-        size += [np.array(fi['Group/GroupLen'])]
+            size += [np.array(fi['Group/GroupLen'])]
 
     else:
-
         pos   += [np.array(fi['Subhalo/SubhaloCM'])]
         vel   += [np.array(fi['Subhalo/SubhaloVel'])*np.sqrt(a)]
         mass  += [np.array(fi['Subhalo/SubhaloMass'])]
@@ -128,7 +137,7 @@ def iso_ratio(f):
     isoratio = iso/nsubs.size
     return z,isoratio
 
-def get_isolated(f):
+def get_isolated_masses(f):
     """
     """
     if '.hdf5' in f:
@@ -143,7 +152,7 @@ def get_isolated(f):
     iso_arr = np.array(gr_mass_arr[iso_ind])
     return iso_arr
 
-def get_merged(f,nsubs_min=10):
+def get_merged_masses(f,nsubs_min=10):
     """
     """
     if '.hdf5' in f:
@@ -155,7 +164,7 @@ def get_merged(f,nsubs_min=10):
     nsubs_arr = np.array(fi['Group/GroupNsubs'])
     gr_mass_arr = np.array(fi['Group/GroupMass'])
     merged_ind = np.where(nsubs_arr>nsubs_min)
-    merged_arr = np.array(gr_mass_arr[iso_ind])
+    merged_arr = np.array(gr_mass_arr[merged_ind])
     return merged_arr
 
 
