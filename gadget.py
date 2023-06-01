@@ -67,11 +67,18 @@ def load_halos(f,fof=True,radius='R200',isolated=False,additional=False,verbose=
         if isolated == True:
             nsubs = np.array(fi['Group/GroupNsubs'])
             iso_ind = np.where(nsubs==1)
-            pos += [np.array(fi['Group/GroupPos'])[iso_ind]] 
-            vel += [np.array(fi['Group/GroupVel'])[iso_ind]] 
-            pos += [np.array(fi['Group/GroupMass'])[iso_ind]] 
-            rad += [np.array(fi['Group/Group_R_Crit200'])[iso_ind]] 
-            size += [np.array(fi['Group/GroupLen'])[iso_ind]] 
+            
+            pos_arr = np.array(fi['Group/GroupPos'])
+            vel_arr = np.array(fi['Group/GroupVel'])*np.sqrt(a)
+            mass_arr = np.array(fi['Group/GroupMass'])
+            rad_arr = np.array(fi['Group/Group_R_Crit200'])
+            size_arr = np.array(fi['Group/GroupLen'])
+
+            pos += [np.array(pos_arr[iso_ind])] 
+            vel += [np.array(vel_arr[iso_ind])] 
+            mass += [np.array(mass_arr[iso_ind])] 
+            rad += [np.array(rad_arr[iso_ind])] 
+            size += [np.array(size_arr[iso_ind])] 
         
         else:
             pos  += [np.array(fi['Group/GroupPos'])]
@@ -116,9 +123,9 @@ def load_halos(f,fof=True,radius='R200',isolated=False,additional=False,verbose=
 
     if verbose:
         if additional:
-            print('%d halos loaded: data is stored in header,pos,vel,mass,radius,size,vdisp,spin'%len(pos[0]))
+            print('At z=%d, %d halos loaded: data is stored in header,pos,vel,mass,radius,size,vdisp,spin'%(z,len(pos[0])))
         else:
-            print('%d halos loaded: data is stored in header,pos,vel,mass,radius,size'%len(pos[0]))
+            print('At z=%d, %d halos loaded: data is stored in header,pos,vel,mass,radius,size'%(z,len(pos[0])))
     
     return head,out 
 
