@@ -122,10 +122,11 @@ def iso_ratio(f):
         filename = str(f)+'.hdf5'
             
     fi = h5.File(filename, 'r')
+    z = fi['Header'].attrs['Redshift']
     nsubs = np.array(fi['Group/GroupNsubs'])
     iso = np.array(np.where(nsubs == 1)).size
     isoratio = iso/nsubs.size
-    return isoratio
+    return z,isoratio
 
 def get_isolated(f):
     """
