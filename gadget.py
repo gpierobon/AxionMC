@@ -2,6 +2,8 @@ import os,sys
 import errno,glob
 import h5py as h5
 import numpy as np
+import pandas as pd
+import scipy
 from scipy import stats,interpolate
 
 def check_folder(foldname,snap_base):
@@ -36,22 +38,75 @@ def get_info(f):
     print("Box Size: %.5f pc"%fi['Header'].attrs['BoxSize'])
 
 
+def find_radius(dist, glen, nbin, thres=0.9):
+    rbins = np.geomspace(np.sort(dist)[1],np.max(dist),nbin)
+    r_r, r_bin = np.histogram(dist,bins=rbins)
+
+    for i in range(nbin-1,0,-1):
+        frac = np.sum(r_r[:i])/glen
+        if frac <=thres:
+            return r_bin[i], frac
+
+
+def get_ids(pref, time):
+    head, pp = load_particles(pref+'/snap_%.3d'%time, verbose=False)
+    xpos, ypos, zpos = pp[0][:,0], pp[0][:,1], pp[0][:,2]
+    ids = pp[3]
+    df = pd.DataFrame(data = {'x': xpos, 'y': ypos, 'z': zpos}, index=ids)
+    hdata = h5.File(pref+'/fof_subhalo_tab_%.3d.hdf5'%time, 'r')
+    glen = np.array(hdata['Group/GroupLen'])
+    goff = np.array(hdata['Group/GroupOffsetType'])[:,1]
+    #print("Getting halo ids at %d ..."%time)
+    halo_ids = {}
+    for j in range(len(glen)):
+        halo_id = j
+        particle_ids = ids[goff[j]:goff[j]+glen[j]]
+        halo_ids[halo_id] = particle_ids
+
+    halo_ids = {key: set(value) for key, value in halo_ids.items()}
+    return df, halo_ids
+
+def get_radii(base, file, thres=0.9):
+    head, pp = load_particles(base+'/snap_%.3d'%file, verbose=False)
+    hfof, halos = load_halos(base+'/fof_subhalo_tab_%.3d'%file, fof=False,verbose=False)
+    data = h5.File(base+'/fof_subhalo_tab_%.3d.hdf5'%file, 'r')
+    xpos, ypos, zpos = pp[0][:,0], pp[0][:,1], pp[0][:,2]
+    ids = pp[3]
+    df = pd.DataFrame(data = {'x': xpos, 'y': ypos, 'z': zpos}, index=ids)
+    glen = np.array(data['Subhalo/SubhaloLen'])
+    goff = np.array(data['Subhalo/SubhaloOffsetType'])[:,1]
+    red = head['Redshift']
+    rads = []
+    for i in range(len(halos[2])):
+        halo0_ids = ids[goff[i]:goff[i]+glen[i]]
+        halo_ppos = df.loc[halo0_ids].to_numpy()
+        halo_pos = data['Subhalo/SubhaloPos'][i]
+        dist = np.sqrt((halo_ppos[:,0]-halo_pos[0])**2+(halo_ppos[:,1]-halo_pos[1])**2+(halo_ppos[:,2]-halo_pos[2])**2)
+        rad, frac = find_radius(dist, glen[i], 200, thres=thres)
+        cc = data['Subhalo/SubhaloHalfmassRad'][i]/rad*(1+red)
+        if cc < 0.1:
+            rads.append(data['Subhalo/SubhaloHalfmassRad'][i])
+        else:
+            rads.append(rad/(1+red))
+    return np.array(rads)
+
+
 def load_halos(f,fof=True,radius='R200',isolated=False,additional=False,verbose=True):
     """
     Loads fof data for a given fof tab
-    Used for profiles of MC halos or general properties 
+    Used for profiles of MC halos or general properties
     """
     if '.hdf5' in f:
         filename = str(f)
     else:
         filename = str(f)+'.hdf5'
-    
+
     if verbose:
         if fof:
             print('Extracting FOF data from %s'%filename)
         else:
             print('Extracting SubHalo data from %s'%filename)
-            
+
     fi = h5.File(filename, 'r')
     head = dict(fi['Header'].attrs)
     z = head['Redshift']
@@ -62,24 +117,24 @@ def load_halos(f,fof=True,radius='R200',isolated=False,additional=False,verbose=
     rad   = []
     size  = []
     out   = []
-    
+
     if fof:
         if isolated == True:
             nsubs = np.array(fi['Group/GroupNsubs'])
             iso_ind = np.where(nsubs==1)
-            
+
             pos_arr = np.array(fi['Group/GroupPos'])
             vel_arr = np.array(fi['Group/GroupVel'])*np.sqrt(a)
             mass_arr = np.array(fi['Group/GroupMass'])
             rad_arr = np.array(fi['Group/Group_R_Crit200'])
             size_arr = np.array(fi['Group/GroupLen'])
 
-            pos += [np.array(pos_arr[iso_ind])] 
-            vel += [np.array(vel_arr[iso_ind])] 
-            mass += [np.array(mass_arr[iso_ind])] 
-            rad += [np.array(rad_arr[iso_ind])] 
-            size += [np.array(size_arr[iso_ind])] 
-        
+            pos += [np.array(pos_arr[iso_ind])]
+            vel += [np.array(vel_arr[iso_ind])]
+            mass += [np.array(mass_arr[iso_ind])]
+            rad += [np.array(rad_arr[iso_ind])]
+            size += [np.array(size_arr[iso_ind])]
+
         else:
             pos  += [np.array(fi['Group/GroupPos'])]
             vel  += [np.array(fi['Group/GroupVel'])*np.sqrt(a)]
@@ -102,14 +157,14 @@ def load_halos(f,fof=True,radius='R200',isolated=False,additional=False,verbose=
         vel   += [np.array(fi['Subhalo/SubhaloVel'])*np.sqrt(a)]
         mass  += [np.array(fi['Subhalo/SubhaloMass'])]
         rad   += [np.array(fi['Subhalo/SubhaloHalfmassRad'])]
-        size  += [np.array(fi['Subhalo/SubhaloLen'])] 
-       
+        size  += [np.array(fi['Subhalo/SubhaloLen'])]
+
         if additional:
             vdisp = []
             spin  = []
             vdisp += [np.array(fi['Subhalo/SubhaloVelDisp'])]
-            spin  += [np.array(fi['Subhalo/SubhaloSpin'])] 
-    
+            spin  += [np.array(fi['Subhalo/SubhaloSpin'])]
+
 
     out  += [np.concatenate(pos,axis=1)]
     out  += [np.concatenate(vel,axis=1)]
@@ -126,8 +181,8 @@ def load_halos(f,fof=True,radius='R200',isolated=False,additional=False,verbose=
             print('At z=%d, %d halos loaded: data is stored in header,pos,vel,mass,radius,size,vdisp,spin'%(z,len(pos[0])))
         else:
             print('At z=%d, %d halos loaded: data is stored in header,pos,vel,mass,radius,size'%(z,len(pos[0])))
-    
-    return head,out 
+
+    return head,out
 
 def iso_ratio(f):
     """
@@ -136,7 +191,7 @@ def iso_ratio(f):
         filename = str(f)
     else:
         filename = str(f)+'.hdf5'
-            
+
     fi = h5.File(filename, 'r')
     z = fi['Header'].attrs['Redshift']
     nsubs = np.array(fi['Group/GroupNsubs'])
@@ -151,7 +206,7 @@ def get_isolated_masses(f):
         filename = str(f)
     else:
         filename = str(f)+'.hdf5'
-            
+
     fi = h5.File(filename, 'r')
     nsubs_arr = np.array(fi['Group/GroupNsubs'])
     gr_mass_arr = np.array(fi['Group/GroupMass'])
@@ -166,7 +221,7 @@ def get_merged_masses(f,nsubs_min=10):
         filename = str(f)
     else:
         filename = str(f)+'.hdf5'
-            
+
     fi = h5.File(filename, 'r')
     nsubs_arr = np.array(fi['Group/GroupNsubs'])
     gr_mass_arr = np.array(fi['Group/GroupMass'])
@@ -184,10 +239,10 @@ def select_halos(f,Nhalos=100,verbose=True):
         filename = str(f)
     else:
         filename = str(f)+'.hdf5'
-    
+
     if verbose:
             print('Selecting halos from %s'%filename)
-            
+
     fi = h5.File(filename, 'r')
     head = dict(fi['Header'].attrs)
     z = head['Redshift']
@@ -196,7 +251,7 @@ def select_halos(f,Nhalos=100,verbose=True):
     nsubs = head['Nsubhalos_Total']
     if verbose:
         print("Found %d groups and %d subhalos"%(ngroups,nsubs))
-   
+
     '''
     nsubs = # Determine if group has a subhalo
     3mass = np.array(fi['Group/GroupMass'])
@@ -211,14 +266,14 @@ def select_halos(f,Nhalos=100,verbose=True):
     #out   = []
 
     #fi[]
-    
+
     #if fof:
         #pos  += [np.array(fi['Group/GroupPos'])]
         #vel  += [np.array(fi['Group/GroupVel'])*np.sqrt(a)]
     #    mass += [np.array(fi['Group/GroupMass'])]
     #    rad += [np.array(fi['Group/Group_R_Mean200'])]
     '''
-    
+
 def load_particles(f,verbose=True):
     """
     Loads particle data for a given snapshot
@@ -227,10 +282,10 @@ def load_particles(f,verbose=True):
 
     """
     filename = str(f)+'.hdf5'
-    
+
     if verbose:
         print('Extracting particle data from %s'%filename)
-            
+
     fi = h5.File(filename, 'r')
     head = dict(fi['Header'].attrs)
     z = head['Redshift']
@@ -253,7 +308,7 @@ def load_particles(f,verbose=True):
         mass = np.full(nparts,mtab[1])
 
     ID = np.array(fi['PartType1/ParticleIDs'])
-     
+
     out += [pos]
     out += [vel]
     out += [mass]
@@ -261,10 +316,10 @@ def load_particles(f,verbose=True):
     if verbose:
         print('%d particles loaded: data is stored in header,pos,vel,mass,ID'%nparts)
 
-    return head,out 
+    return head,out
 
-def boundf(dire,gridsize,totmass,skip=2,catalog='fof',masstype='samemass'):
-     
+def boundf(dire,gridsize,totmass,skip=2,catalog='fof',masstype='samemass',isolated=False):
+
     fof_tab = []
     for filename in glob.iglob(dire+'/fof_subhalo_tab_*', recursive=True):
             fof_tab.append(filename)
@@ -280,39 +335,39 @@ def boundf(dire,gridsize,totmass,skip=2,catalog='fof',masstype='samemass'):
         hli = []
         for i in range(skip,len(fof_tab)):
             if catalog == 'fof':
-                h, out = load_halos(fof_tab[i],fof=True,radius='R200',additional=False,verbose=False) 
+                h, out = load_halos(fof_tab[i],fof=True,isolated=isolated,radius='R200',additional=False,verbose=False)
             else:
-                h, out = load_halos(fof_tab[i],fof=False,radius='R200',additional=False,verbose=False) 
+                h, out = load_halos(fof_tab[i],fof=False,radius='R200',additional=False,verbose=False)
             halomass = np.sum(out[2])
             hli.append(halomass/totmass)
             zli.append(z[i])
-        hli = np.array(hli) 
+        hli = np.array(hli)
         z   = np.array(zli)
         bound = np.column_stack([z,hli])
 
     elif masstype == 'samemass':
         if catalog == 'fof':
             halo  = np.array([np.sum(np.array(ff[i]['Group/GroupLen']))/gridsize**3 for i in range(len(fof_tab))])
-            bound = np.column_stack([z,halo])      
+            bound = np.column_stack([z,halo])
         elif catalog == 'subfind':
-            halo = np.array([np.sum(np.array(ff[i]['Subhalo/SubhaloLen']))/gridsize**3 for i in range(len(fof_tab))]) 
-            bound = np.column_stack([z,halo])      
+            halo = np.array([np.sum(np.array(ff[i]['Subhalo/SubhaloLen']))/gridsize**3 for i in range(len(fof_tab))])
+            bound = np.column_stack([z,halo])
         else:
             raise ValueError("Unknown option: select fof or subfind")
 
     else:
         raise ValueError("Unknown option: select samemass or diffmasss")
-    
+
     return bound
 
-def dens_profile(x,mass,L,rmin,rad,nbins=50):
+def dens_profile(x,mass,L,rmin,rad,nbins=80):
     '''
-    Computes profiles 
+    Computes profiles
     '''
     nparts = x.shape[0]
     x[x >= 0.5*L] -= L
     x[x < -0.5*L] -= L
-    
+
     r    = np.sqrt(np.sum(x.T**2,axis=0))
     bins = np.geomspace(rmin,rad,nbins)
     if bins[1]<bins[0]:
@@ -320,16 +375,34 @@ def dens_profile(x,mass,L,rmin,rad,nbins=50):
 
     bvol = 4./3 * np.pi * (bins[1:]**3 - bins[:-1]**3)
     hist_mass,hbins = np.histogram(r,bins=bins,weights=mass)
-    
+
     r_out = 0.5*(bins[1:]+bins[:-1])
     rho_out = hist_mass/bvol
-    
-    return r_out/rad, rho_out
+
+    return r_out, rho_out
 
 def HMF(massarr,minv,maxv,num):
     y,x,_ = stats.binned_statistic(massarr,massarr,statistic='count', bins=np.logspace(minv, maxv, num=num))
     return x,y
 
+def fit_pl(r,rho):
+    pl_profile = lambda x, rho0, r0, alpha: rho0*(x/r0)**alpha
+    minimization = lambda x: np.sqrt(np.sum(np.abs(np.log10(pl_profile(r,x[0],x[1],x[2])/rho))**2))
+    x0 = [1e3,1e-6,-3]
+    method = 'Nelder-Mead'
+    fit = scipy.optimize.minimize(minimization,x0,method=method)
+    return fit.x[0], fit.x[1], fit.x[2]
+
+def fit_nfw(r,rho): # my own fitting routine, seems to give more reliable results than curve_fit
+
+    nfw_profile = lambda x, rho0, rs: rho0/( (x/rs) * (1 + x/rs)**2)
+    minimization = lambda x: np.sqrt(np.sum(np.abs(np.log10(nfw_profile(r,x[0],x[1])/rho))**2))
+    x0 = [1e3, 5e-7]
+    method = 'Nelder-Mead' #'L-BFGS-B'
+    #xbnd = [[1e-5,1], [5e-8,5e-4]]
+    #fit = scipy.optimize.minimize(minimization,x0,method=method,bounds=xbnd) #use this for L-BFGS-B method
+    fit = scipy.optimize.minimize(minimization,x0,method=method)
+    return fit.x[0], fit.x[1]
 
 def inte(f):
     x = f[:,0]; y = f[:,1]
@@ -343,7 +416,7 @@ def alpha(f):
     finterp = interpolate.InterpolatedUnivariateSpline(x, y, k=1)
     xx = np.linspace(x[0], x[-1], 5*len(x))
     qq = [finterp.integral(0, t) for t in xx]
-    return np.sqrt(qq[-1])
+    return qq[-1]
 
 def beta(f):
     x = f[:,0]; y = f[:,1]/x**2

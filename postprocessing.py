@@ -50,8 +50,8 @@ else:
 
 BoxSize   = L
 grid      = gridsize                 
-ptypes    = [1]                   
-MAS       = 'CIC'               
+ptypes    = [1]
+MAS       = 'CIC'
 verbose   = True
 threads   = 4
 

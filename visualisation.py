@@ -8,7 +8,7 @@ import matplotlib.patheffects as pe
 try:
     import yt
 except ImportError:
-    pass 
+    pass
 
 from params import *
 
@@ -34,8 +34,8 @@ def single_plot(xlab='',ylab='',\
     ax = fig.add_subplot(111)
     ax.set_xlabel(xlab,fontsize=lfs)
     ax.set_ylabel(ylab,fontsize=lfs)
-    ax.tick_params(which='major',direction='in',width=0.8,length=8,right=True,top=True,pad=7)
-    ax.tick_params(which='minor',direction='in',width=0.8,length=8,right=True,top=True)
+    #ax.tick_params(which='major',direction='in',width=0.8,length=8,right=True,top=True,pad=7)
+    #ax.tick_params(which='minor',direction='in',width=0.8,length=8,right=True,top=True)
     if Grid: ax.grid()
     return fig,ax
 
@@ -59,7 +59,7 @@ def projection_plot():
         ax.set_xlabel(r'$x~({\rm pc}/h)$'); ax.set_ylabel(r'$y~({\rm pc}/h)$')
         ax.set_title(r'$z=%d$'%z)
         fig.savefig('aout/plots/'+str(snap_base)+'/z%d.pdf'%stime,bbox_inches='tight')
-        
+
 
 def vol_render(de,res,bmin,bmax,snap_base,j):
     data = dict(density = (de, "g/cm**3"))
