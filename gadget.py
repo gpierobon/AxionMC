@@ -360,7 +360,7 @@ def boundf(dire,gridsize,totmass,skip=2,catalog='fof',masstype='samemass',isolat
 
     return bound
 
-def dens_profile(x,mass,L,rmin,rad,nbins=80):
+def dens_profile(x,mass,L,rmin,rad,nbins=200):
     '''
     Computes profiles
     '''
@@ -379,7 +379,7 @@ def dens_profile(x,mass,L,rmin,rad,nbins=80):
     r_out = 0.5*(bins[1:]+bins[:-1])
     rho_out = hist_mass/bvol
 
-    return r_out, rho_out
+    return r_out/rad, rho_out
 
 def HMF(massarr,minv,maxv,num):
     y,x,_ = stats.binned_statistic(massarr,massarr,statistic='count', bins=np.logspace(minv, maxv, num=num))
