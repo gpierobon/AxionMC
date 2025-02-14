@@ -4,6 +4,7 @@ import h5py as h5
 import numpy as np
 import pandas as pd
 import scipy
+import tqdm
 from scipy import stats,interpolate
 
 def check_folder(foldname,snap_base):
@@ -67,6 +68,9 @@ def get_ids(pref, time):
     return df, halo_ids
 
 def get_radii(base, file, thres=0.9):
+    if os.path.exists(base+'/subhalo_rads_%.3d.txt'%file):
+        print("Read from cache!")
+        return np.loadtxt(base+'/subhalo_rads_%.3d.txt'%file)
     head, pp = load_particles(base+'/snap_%.3d'%file, verbose=False)
     hfof, halos = load_halos(base+'/fof_subhalo_tab_%.3d'%file, fof=False,verbose=False)
     data = h5.File(base+'/fof_subhalo_tab_%.3d.hdf5'%file, 'r')
@@ -90,6 +94,42 @@ def get_radii(base, file, thres=0.9):
             rads.append(rad/(1+red))
     return np.array(rads)
 
+def load_isolated(f,):
+    if '.hdf5' in f:
+        filename = str(f)
+    else:
+        filename = str(f)+'.hdf5'
+    print('Extracting halo data from %s'%filename)
+
+    fh = h5.File(filename, 'r')
+    head = dict(fh['Header'].attrs)
+    z = head['Redshift']
+    a = 1./(1+z)
+
+    pos   = []
+    mass  = []
+    rad   = []
+    size  = []
+    out   = []
+
+    nsubs = np.array(fh['Group/GroupNsubs'])
+    iso_mask = np.array([np.sum(nsubs[:i[0]]) for i in np.argwhere(nsubs==1)])
+
+    ratio = 100*(len(np.argwhere(nsubs==1))/len(np.array(fh['Subhalo/SubhaloMass'])))
+    print("%.1f%% of halos are isolated and loaded"%ratio)
+
+    pos   += [np.array(fh['Subhalo/SubhaloCM'])[iso_mask]]
+    mass  += [np.array(fh['Subhalo/SubhaloMass'])[iso_mask]]
+    rad   += [np.array(fh['Subhalo/SubhaloHalfmassRad'])[iso_mask]]
+    size  += [np.array(fh['Subhalo/SubhaloLen'])[iso_mask]]
+
+
+    out  += [np.concatenate(pos,axis=1)]
+    out  += [np.concatenate(mass)]
+    out  += [np.concatenate(rad)]
+    out  += [np.concatenate(size)]
+
+    return head, out, iso_mask
 
 def load_halos(f,fof=True,radius='R200',isolated=False,additional=False,verbose=True):
     """
