@@ -4,3 +4,9 @@ main.py
 .DS_Store
 plots/
 log.txt
+
+dens.*
+gadi-run
+prof_script.py
+
+old/

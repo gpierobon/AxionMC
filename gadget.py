@@ -131,6 +131,44 @@ def load_isolated(f,):
 
     return head, out, iso_mask
 
+def load_merged(f):
+    if '.hdf5' in f:
+        filename = str(f)
+    else:
+        filename = str(f)+'.hdf5'
+    print('Extracting halo data from %s'%filename)
+
+    fh = h5.File(filename, 'r')
+    head = dict(fh['Header'].attrs)
+    z = head['Redshift']
+    a = 1./(1+z)
+
+    pos   = []
+    mass  = []
+    rad   = []
+    size  = []
+    sats  = []
+    out   = []
+
+    nsubs = np.array(fh['Group/GroupNsubs'])
+    mer_mask = np.argwhere(nsubs>1)
+
+    pos   += [np.array(fh['Group/GroupPos'])[mer_mask]]
+    mass  += [np.array(fh['Group/GroupMass'])[mer_mask]]
+    rad   += [a*np.array(fh['Group/Group_R_Crit200'])[mer_mask]]
+    size  += [np.array(fh['Group/GroupLen'])[mer_mask]]
+    sats  += [np.array(fh['Group/GroupNsubs'])[mer_mask]]
+
+    out  += [np.concatenate(pos,axis=1)]
+    out  += [np.concatenate(mass)]
+    out  += [np.concatenate(rad)]
+    out  += [np.concatenate(size)]
+    out  += [np.concatenate(sats)]
+
+    return head, out, mer_mask
+
+
+
 def load_halos(f,fof=True,radius='R200',isolated=False,additional=False,verbose=True):
     """
     Loads fof data for a given fof tab
@@ -421,8 +459,14 @@ def dens_profile(x,mass,L,rmin,rad,nbins=200):
 
     return r_out/rad, rho_out
 
-def HMF(massarr,minv,maxv,num):
-    y,x,_ = stats.binned_statistic(massarr,massarr,statistic='count', bins=np.logspace(minv, maxv, num=num))
+#def HMF(massarr,minv,maxv,num):
+#    y,x,_ = stats.binned_statistic(massarr,massarr,statistic='count', bins=np.logspace(minv, maxv, num=num))
+#    return x,y
+
+def HMF(massarr,num=70):
+    minv = np.min(massarr)
+    maxv = np.max(massarr)
+    y,x,_ = stats.binned_statistic(massarr,massarr,statistic='count', bins=np.geomspace(minv, maxv, num=num))
     return x,y
 
 def fit_pl(r,rho):
